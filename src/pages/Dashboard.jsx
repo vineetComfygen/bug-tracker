@@ -12,6 +12,7 @@ const Dashboard = () => {
     pending: 0,
     productivity: 0
   });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Calculate real task statistics
   useEffect(() => {
@@ -45,12 +46,32 @@ const Dashboard = () => {
   }, []);
 
   const handleLogout = () => {
+    setIsLoggingOut(true);
+    
+    // First perform the logout action
     logout();
-    navigate("/");
+    
+    // Create a smooth transition effect
+    setTimeout(() => {
+      // Navigate to login page after a short delay
+      navigate("/", { replace: true });
+      
+      // Force a page refresh
+      window.location.reload();
+    }, 300);
   };
 
+  // Apply fade-out effect when logging out
+  useEffect(() => {
+    if (isLoggingOut) {
+      document.body.classList.add('fade-out');
+    } else {
+      document.body.classList.remove('fade-out');
+    }
+  }, [isLoggingOut]);
+
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <div className={`min-h-screen bg-gray-900 text-gray-100 transition-opacity duration-300 ${isLoggingOut ? 'opacity-0' : 'opacity-100'}`}>
       {/* Header/Navbar */}
       <header className="bg-gray-800 border-b border-gray-700 shadow-md">
         <div className="container mx-auto px-6 py-4">
@@ -66,8 +87,9 @@ const Dashboard = () => {
               <button 
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-500" 
                 onClick={handleLogout}
+                disabled={isLoggingOut}
               >
-                Logout
+                {isLoggingOut ? "Logging out..." : "Logout"}
               </button>
             </div>
           </div>
