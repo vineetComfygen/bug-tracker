@@ -1,6 +1,8 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useContext } from "react";
+import { AuthContext } from "../context/AuthContext"; // Assuming this is where user context is kept
 
-const TimeTracker = ({ task, onTimeUpdate }) => {
+const TimeTracker = ({ task, onTimeUpdate, onStatusChange }) => {
+  const { user } = useContext(AuthContext); // Get current user to check if they're a manager
   const [timeSpent, setTimeSpent] = useState(() => {
     return localStorage.getItem(`time-${task.id}`)
       ? parseInt(localStorage.getItem(`time-${task.id}`), 10)
@@ -27,10 +29,9 @@ const TimeTracker = ({ task, onTimeUpdate }) => {
     }
   }, [timeSpent, task.id, onTimeUpdate]);
 
-  // Auto-start timer when a new task is created
+  // Auto-start timer when a task is open
   useEffect(() => {
-    // If this is a new task (assuming tasks start with "Open" status)
-    // and the task has an ID (meaning it's been saved)
+    // Auto-start when task is in "Open" status
     if (task.id && task.status === "Open" && !isTracking) {
       startTracking();
     }
@@ -76,27 +77,41 @@ const TimeTracker = ({ task, onTimeUpdate }) => {
     }
   };
 
+  // Function for managers to reopen a task
+  const reopenTask = () => {
+    if (onStatusChange) {
+      onStatusChange(task.id, "Open");
+      // Timer will auto-start due to the useEffect above
+    }
+  };
+
   return (
     <div className="mt-2 p-2 bg-gray-700 rounded">
       <p className="text-sm"><b>Time Spent:</b> {formatTime(timeSpent)}</p>
-      <div className="mt-1">
-        {isTracking ? (
+      
+      {/* Only show the stop button when tracking is active */}
+      {isTracking && (
+        <div className="mt-1">
           <button 
             onClick={stopTracking}
             className="bg-red-500 text-white px-3 py-1 text-sm rounded"
           >
             Stop Timer
           </button>
-        ) : (
+        </div>
+      )}
+      
+      {/* Manager-only reopen option */}
+      {user?.role === "Manager" && (task.status === "Pending Approval" || task.status === "Closed") && (
+        <div className="mt-2">
           <button 
-            onClick={startTracking}
-            className="bg-green-500 text-white px-3 py-1 text-sm rounded"
-            disabled={task.status === "Closed" || task.status === "Pending Approval"}
+            onClick={reopenTask}
+            className="bg-blue-500 text-white px-3 py-1 text-sm rounded"
           >
-            Start Timer
+            Reopen Task
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

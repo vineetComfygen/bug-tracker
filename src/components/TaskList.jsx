@@ -127,9 +127,10 @@ const TaskList = ({ role }) => {
   };
   
   const handleReopenTask = (id) => {
+    // Update the task status to "Open"
     setTasks(tasks.map(task => (task.id === id ? { ...task, status: "Open" } : task)));
     
-    // Update selectedTask if it's the one being reopened
+    // Update the selectedTask state if the popup is already open for this task
     if (selectedTask && selectedTask.id === id) {
       setSelectedTask({ ...selectedTask, status: "Open" });
     }
@@ -160,7 +161,23 @@ const TaskList = ({ role }) => {
   const closeTaskDetails = () => {
     setSelectedTask(null);
   };
-
+  
+  const handleStatusChange = (taskId, newStatus) => {
+    const updatedTasks = tasks.map(task => {
+      if (task.id === taskId) {
+        return { ...task, status: newStatus };
+      }
+      return task;
+    });
+    
+    setTasks(updatedTasks);
+    
+    // Update selectedTask if it's being changed
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask({ ...selectedTask, status: newStatus });
+    }
+  };
+  
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
@@ -196,7 +213,8 @@ const TaskList = ({ role }) => {
 
   return (
     <div className="task-list-container my-6">
-      {role === "Developer" && !editingTask && (
+      {/* Changed permission: Now only Managers can create new tasks */}
+      {role === "Manager" && !editingTask && (
         <button 
           onClick={() => setEditingTask({})} 
           className="bg-blue-500 text-white px-4 py-2 mb-4 rounded hover:bg-blue-600 transition duration-200"
@@ -330,102 +348,156 @@ const TaskList = ({ role }) => {
       
       {/* Task Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTasks.map(task => (
-          <div 
-            key={task.id} 
-            className="bg-gray-800 p-4 rounded shadow border border-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200"
-            onClick={() => openTaskDetails(task)}
-          >
-            <div className={`text-sm font-semibold mb-1 px-2 py-1 rounded inline-block
-              ${task.status === "Open" ? "bg-blue-900 text-blue-200" : 
-                task.status === "Pending Approval" ? "bg-yellow-900 text-yellow-200" : 
-                "bg-green-900 text-green-200"}`
-            }>
-              {task.status}
-            </div>
-            
-            {task.type && (
-              <div className="text-xs font-medium ml-2 px-2 py-1 rounded inline-block bg-gray-700 text-gray-300">
-                {task.type}
+        {filteredTasks.map(task => {
+          // Determine if this task has a reopen button
+          const hasReopenButton = role === "Manager" && task.status === "Closed";
+          
+          return (
+            <div 
+              key={task.id} 
+              className={`bg-gray-800 p-4 rounded shadow border border-gray-700 hover:border-blue-500 transition-all duration-200 ${!hasReopenButton ? 'cursor-pointer' : ''}`}
+              onClick={hasReopenButton ? null : () => openTaskDetails(task)}
+            >
+              {/* Task Header with Status */}
+              <div className={`text-sm font-semibold mb-1 px-2 py-1 rounded inline-block
+                ${task.status === "Open" ? "bg-blue-900 text-blue-200" : 
+                  task.status === "Pending Approval" ? "bg-yellow-900 text-yellow-200" : 
+                  task.status === "Closed" ? "bg-green-900 text-green-200" :
+                  "bg-blue-900 text-blue-200"}`
+              }>
+                {task.status}
               </div>
-            )}
-            
-            <h4 className="text-lg font-bold text-white mt-2">{task.title}</h4>
-            <p className="text-gray-300 mb-2 line-clamp-2">{task.description}</p>
-            
-            <div className="flex items-center mb-2">
-              <span className={`inline-block w-3 h-3 rounded-full mr-2
-                ${task.priority === "High" || task.priority === "Critical" ? "bg-red-500" : 
-                  task.priority === "Medium" ? "bg-yellow-500" : 
-                  "bg-green-500"}`
-              }></span>
-              <span className="text-sm text-gray-300">{task.priority} Priority</span>
-            </div>
-            
-            {task.dueDate && (
-              <div className="text-sm text-gray-400 mb-2">
-                Due: {new Date(task.dueDate).toLocaleDateString()}
+              
+              {/* Task Type */}
+              {task.type && (
+                <div className="text-xs font-medium ml-2 px-2 py-1 rounded inline-block bg-gray-700 text-gray-300">
+                  {task.type}
+                </div>
+              )}
+              
+              {/* Task Title - Make it non-clickable for tasks with reopen button */}
+              <div onClick={hasReopenButton ? null : () => openTaskDetails(task)}>
+                <h4 className="text-lg font-bold text-white mt-2">{task.title}</h4>
+                <p className="text-gray-300 mb-2 line-clamp-2">{task.description}</p>
               </div>
-            )}
-            
-            {task.assignee && (
-              <div className="text-sm text-gray-400 mb-2">
-                Assigned to: {task.assignee}
+              
+              {/* Task Priority */}
+              <div className="flex items-center mb-2">
+                <span className={`inline-block w-3 h-3 rounded-full mr-2
+                  ${task.priority === "High" || task.priority === "Critical" ? "bg-red-500" : 
+                    task.priority === "Medium" ? "bg-yellow-500" : 
+                    "bg-green-500"}`
+                }></span>
+                <span className="text-sm text-gray-300">{task.priority} Priority</span>
               </div>
-            )}
+              
+              {/* Due Date */}
+              {task.dueDate && (
+                <div className="text-sm text-gray-400 mb-2">
+                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                </div>
+              )}
+              
+              {/* Assignee */}
+              {task.assignee && (
+                <div className="text-sm text-gray-400 mb-2">
+                  Assigned to: {task.assignee}
+                </div>
+              )}
 
-            <TimeTracker task={task} onTimeUpdate={handleTimeUpdate} />
-            
-            <div className="mt-4 space-x-2 flex flex-wrap" onClick={(e) => e.stopPropagation()}>
-              {role === "Developer" && task.status === "Open" && (
-                <>
+              {/* Time Tracker */}
+              <TimeTracker 
+                task={task} 
+                onTimeUpdate={handleTimeUpdate}
+                onStatusChange={handleStatusChange} 
+              />
+              
+              {/* Action Buttons */}
+              <div className="mt-4 space-x-2 flex flex-wrap">
+                {/* Delete Button - Only for Manager and Open tasks */}
+                {role === "Manager" && task.status === "Open" && (
                   <button 
                     className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-sm rounded"
                     onClick={(e) => {
-                      e.stopPropagation();
+                      if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
                       handleDeleteTask(task.id);
                     }}
                   >
                     Delete
                   </button>
+                )}
+                
+                {/* Request Approval Button - Only for Developer and Open tasks */}
+                {role === "Developer" && task.status === "Open" && (
                   <button 
                     className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 text-sm rounded mt-2 w-full"
                     onClick={(e) => {
-                      e.stopPropagation();
+                      if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
                       handleRequestApproval(task.id);
                     }}
                   >
                     Request Approval
                   </button>
-                </>
-              )}
+                )}
 
-              {role === "Manager" && task.status === "Pending Approval" && (
-                <button 
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm rounded"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleApproveTask(task.id);
-                  }}
-                >
-                  Approve
-                </button>
-              )}
-              
-              {role === "Manager" && task.status === "Closed" && (
-                <button 
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 text-sm rounded"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleReopenTask(task.id);
-                  }}
-                >
-                  Reopen Task
-                </button>
-              )}
+                {/* Approve Button - Only for Manager and Pending Approval tasks */}
+                {role === "Manager" && task.status === "Pending Approval" && (
+                  <button 
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm rounded"
+                    onClick={(e) => {
+                      if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                      handleApproveTask(task.id);
+                    }}
+                  >
+                    Approve
+                  </button>
+                )}
+                
+                {/* Reopen Button - Only for Manager and Closed tasks */}
+                {role === "Manager" && task.status === "Closed" && (
+                  <button 
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded"
+                    onClick={(e) => {
+                      if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                      handleReopenTask(task.id);
+                      return false; // Explicitly return false to prevent default
+                    }}
+                  >
+                    Reopen
+                  </button>
+                )}
+                
+                {/* View Details Button - Only show for tasks with Reopen button */}
+                {hasReopenButton && (
+                  <button 
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 text-sm rounded ml-2"
+                    onClick={(e) => {
+                      if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                      openTaskDetails(task);
+                    }}
+                  >
+                    View Details
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       {filteredTasks.length === 0 && (

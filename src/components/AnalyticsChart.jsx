@@ -88,7 +88,7 @@ const AnalyticsChart = () => {
   };
 
   return (
-    <div className="bg-white p-4 rounded shadow">
+    <div className="bg-gray-700 p-4 rounded shadow text-white">
       <h3 className="text-lg font-bold mb-4">Task Analytics</h3>
 
       <div className="grid grid-cols-1 gap-6">
